@@ -121,14 +121,7 @@ PHOST phost_resolve( const char *host ) {
 	PHOST ip = inet_addr(host);
 	if( ip == INADDR_NONE ) {
 		struct hostent *h;
-#	if defined(OS_WINDOWS) || defined(OS_MAC) || defined(OS_CYGWIN)
 		h = gethostbyname(host);
-#	else
-		struct hostent hbase;
-		char buf[1024];
-		int errcode;
-		gethostbyname_r(host,&hbase,buf,1024,&h,&errcode);
-#	endif
 		if( h == NULL )
 			return UNRESOLVED_HOST;
 		ip = *((unsigned int*)h->h_addr_list[0]);

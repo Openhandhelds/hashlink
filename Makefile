@@ -1,4 +1,5 @@
 
+ARCHITECTURE := $(shell hostnamectl | grep "Architecture" | sed -e "s/.*: \(.*\)/\1/")
 LBITS := $(shell getconf LONG_BIT)
 MARCH ?= $(LBITS)
 PREFIX ?= /usr/local
@@ -8,8 +9,14 @@ INSTALL_LIB_DIR ?= $(PREFIX)/lib
 INSTALL_INCLUDE_DIR ?= $(PREFIX)/include
 
 LIBS=fmt sdl ssl openal ui uv mysql sqlite
+ifeq ($(ARCHITECTURE),arm64)
+	CFLAGS = -Wall -O3 -I src -march=armv8-a -std=c11 -D LIBHL_EXPORTS
+	ARCHITECTURE = ARM
+else
+	CFLAGS = -Wall -O3 -I src -msse2 -mfpmath=sse -std=c11 -D LIBHL_EXPORTS
+endif
 
-CFLAGS = -Wall -O3 -I src -msse2 -mfpmath=sse -std=c11 -D LIBHL_EXPORTS
+
 LFLAGS = -L. -lhl
 EXTRA_LFLAGS ?=
 LIBFLAGS =
@@ -105,14 +112,25 @@ LIB += ${HL_DEBUG}
 else
 
 # Linux
-CFLAGS += -m$(MARCH) -fPIC -pthread -fno-omit-frame-pointer
+ifeq ($(ARCHITECTURE), ARM)
+	ifeq ($(ARM_SOC), RK3399_SOC)
+		CFLAGS += -mtune=cortex-a72.cortex-a53 -DRK3399_SOC
+	endif
+       	CFLAGS += -fPIC -pthread -fno-omit-frame-pointer
+else
+	CFLAGS += -m$(MARCH) -fPIC -pthread -fno-omit-frame-pointer
+endif
+
 LFLAGS += -lm -Wl,-rpath,.:'$$ORIGIN':$(INSTALL_LIB_DIR) -Wl,--export-dynamic -Wl,--no-undefined
 
-ifeq ($(MARCH),32)
-CFLAGS += -I /usr/include/i386-linux-gnu
-LIBFLAGS += -L/opt/libjpeg-turbo/lib
-else
-LIBFLAGS += -L/opt/libjpeg-turbo/lib64
+ifneq ($(ARCHITECTURE), ARM)
+	LIBHL_FLAGS = -m$(ARCH)
+	ifeq ($(MARCH),32)
+		CFLAGS += -I /usr/include/i386-linux-gnu
+		LIBFLAGS += -L/opt/libjpeg-turbo/lib
+	else
+		LIBFLAGS += -L/opt/libjpeg-turbo/lib64
+	endif
 endif
 
 LIBOPENAL = -lopenal
@@ -123,11 +141,11 @@ endif
 
 
 ifdef MESA
-LIBS += mesa
+	LIBS += mesa
 endif
 
 ifdef DEBUG
-CFLAGS += -g
+	CFLAGS += -g
 endif
 
 all: libhl hl libs
@@ -155,7 +173,7 @@ src/std/regexp.o: src/std/regexp.c
 	${CC} ${CFLAGS} -o $@ -c $< ${PCRE_FLAGS}
 
 libhl: ${LIB}
-	${CC} -o libhl.$(LIBEXT) -m${MARCH} ${LIBFLAGS} -shared ${LIB} -lpthread -lm
+	${CC} -o libhl.$(LIBEXT) ${LIBHL_FLAGS} ${LIBFLAGS} -shared ${LIB} -lpthread -lm
 
 hlc: ${BOOT}
 	${CC} ${CFLAGS} -o hlc ${BOOT} ${LFLAGS} ${EXTRA_LFLAGS}
@@ -170,7 +188,7 @@ fmt: ${FMT} libhl
 	${CC} ${CFLAGS} -shared -o fmt.hdll ${FMT} ${LIBFLAGS} -L. -lhl -lpng $(LIBTURBOJPEG) -lz -lvorbisfile
 
 sdl: ${SDL} libhl
-	${CC} ${CFLAGS} -shared -o sdl.hdll ${SDL} ${LIBFLAGS} -L. -lhl -lSDL2 $(LIBOPENGL)
+	${CC} ${CFLAGS} ${SDL_CFLAGS} -shared -o sdl.hdll ${SDL} ${LIBFLAGS} -L. -lhl -lSDL2 $(LIBOPENGL)
 
 openal: ${OPENAL} libhl
 	${CC} ${CFLAGS} -shared -o openal.hdll ${OPENAL} ${LIBFLAGS} -L. -lhl $(LIBOPENAL)

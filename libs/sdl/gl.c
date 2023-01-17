@@ -1,6 +1,7 @@
 #define HL_NAME(n) sdl_##n
 #include <hl.h>
 
+/* Add specific defined for Linux and arm targets */
 #if defined(HL_IOS) || defined (HL_TVOS)
 #	include <SDL.h>
 #	include <SDL_syswm.h>
@@ -27,6 +28,15 @@
 #	include <GLES3/gl3.h>
 #	include <GLES3/gl3ext.h>
 #	define HL_GLES
+#elif defined(__arm__) || defined(__aarch64__)
+#       include <SDL2/SDL.h>
+#	if defined(RK3399_SOC)
+#       include <GLES3/gl32.h>
+#	else
+#       include <GLES3/gl3.h>
+#	endif
+#       include <GLES3/gl3ext.h>
+#       define HL_GLES
 #else
 #	include <SDL2/SDL.h>
 #	include <GL/glu.h>
@@ -37,11 +47,17 @@
 #	define GL_IMPORT(fun, t)
 #	define ES_NOT_SUPPORTED hl_error("Not supported by GLES3")
 #	define glBindFragDataLocation(...) ES_NOT_SUPPORTED
-#	define glBindImageTexture(...) ES_NOT_SUPPORTED
+#if !defined(GL_ES_VERSION_3_1) || !defined(GL_ES_VERSION_3_2)
+#       define glBindImageTexture(...) ES_NOT_SUPPORTED
+#endif
 #	define glTexImage2DMultisample(...) ES_NOT_SUPPORTED
-#	define glFramebufferTexture(...) ES_NOT_SUPPORTED
-#	define glDispatchCompute(...) ES_NOT_SUPPORTED
-#	define glMemoryBarrier(...) ES_NOT_SUPPORTED
+#if !defined(GL_ES_VERSION_3_2)
+#       define glFramebufferTexture(...) ES_NOT_SUPPORTED
+#endif
+#if !defined(GL_ES_VERSION_3_1) || !defined(GL_ES_VERSION_3_2)
+#       define glDispatchCompute(...) ES_NOT_SUPPORTED
+#       define glMemoryBarrier(...) ES_NOT_SUPPORTED
+#endif
 #	define glPolygonMode(face,mode) if( mode != 0x1B02 ) ES_NOT_SUPPORTED
 #	define glGetQueryObjectiv glGetQueryObjectuiv
 #	define glClearDepth glClearDepthf

@@ -117,11 +117,21 @@ static void *get_thread_stackptr( thread_handle *t, void **eip ) {
 #	endif
 #elif defined(HL_LINUX)
 #	ifdef HL_64
+#       if defined(__aarch64__)
+        *eip = (void*)shared_context.context.uc_mcontext.pc;
+        return (void*)shared_context.context.uc_mcontext.sp;
+#	else
 	*eip = (void*)shared_context.context.uc_mcontext.gregs[REG_RIP];
 	return (void*)shared_context.context.uc_mcontext.gregs[REG_RSP];
+#	endif
 #	else
+#       if defined(__arm__)
+        *eip = (void*)shared_context.context.uc_mcontext.arm_pc;
+        return (void*)shared_context.context.uc_mcontext.arm_sp;
+#       else
 	*eip = (void*)shared_context.context.uc_mcontext.gregs[REG_EIP];
 	return (void*)shared_context.context.uc_mcontext.gregs[REG_ESP];
+#	endif
 #	endif
 #else
 	return NULL;

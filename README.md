@@ -29,6 +29,14 @@ To install all dependencies on the latest **Fedora**, for example:
 
 `sudo dnf install libpng-devel turbojpeg-devel libvorbis-devel openal-soft-devel SDL2-devel mesa-libGLU-devel mbedtls-devel libuv-devel  sqlite-devel`
 
+## ARM System On Chip
+
+To build for a specific ARM SoC, you can simply call, for example:
+
+`make ARM_SOC=RK3399_SOC` to build for the Rockchip RK3399
+
+The list of supported SoC is available in the Makefile file
+
 **And on OSX:**
 
 `brew bundle` to install the dependencies listed in [Brewfile](Brewfile).
