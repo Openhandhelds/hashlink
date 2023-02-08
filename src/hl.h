@@ -56,6 +56,10 @@
 #	ifndef _GNU_SOURCE
 #		define _GNU_SOURCE
 #	endif
+#	if defined(GLES32_SOC) || defined(GLES31_SOC) \
+        || defined(GLES30_SOC) || defined(GLES20_SOC)
+#		define HL_SBC
+#	endif
 #endif
 
 #if defined(HL_IOS) || defined(HL_ANDROID) || defined(HL_TVOS)
@@ -78,11 +82,13 @@
 #	define HL_CONSOLE
 #endif
 
-#if (defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)) && !defined(HL_CONSOLE)
+#if (defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)) \
+ && !defined(HL_CONSOLE)
 #	define HL_BSD
 #endif
 
-#if defined(_64BITS) || defined(__x86_64__) || defined(_M_X64) || defined(__LP64__)
+#if defined(_64BITS) || defined(__x86_64__) || defined(_M_X64) \
+ || defined(__LP64__) || defined(__aarch64__)
 #	define HL_64
 #endif
 

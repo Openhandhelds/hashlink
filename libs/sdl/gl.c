@@ -30,12 +30,19 @@
 #	define HL_GLES
 #elif defined(__arm__) || defined(__aarch64__)
 #       include <SDL2/SDL.h>
-#	if defined(RK3399_SOC)
+#	if defined(GLES32_SOC) || defined(GLES31_SOC) || defined(GLES30_SOC)
+#	if defined(GLES32_SOC)
 #       include <GLES3/gl32.h>
+#	elif defined(GLES31_SOC)
+#       include <GLES3/gl31.h>
 #	else
-#       include <GLES3/gl3.h>
+#	include <GLES3/gl3.h>
 #	endif
 #       include <GLES3/gl3ext.h>
+#	elif defined(GLES20_SOC)
+#	include <GLES2/gl2.h>
+#	include <GLES2/gl2ext.h>
+#	endif
 #       define HL_GLES
 #else
 #	include <SDL2/SDL.h>
@@ -610,14 +617,14 @@ HL_PRIM bool HL_NAME(gl_query_result_available)( vdynamic *q ) {
 
 HL_PRIM double HL_NAME(gl_query_result)( vdynamic *q ) {
 	GLuint64 v = -1;
-#	if !defined(HL_MESA) && !defined(HL_MOBILE)
+#	if !defined(HL_MESA) && !defined(HL_MOBILE) && !defined(HL_SBC)
 	glGetQueryObjectui64v(q->v.i, GL_QUERY_RESULT, &v);
 #	endif
 	return (double)v;
 }
 
 HL_PRIM void HL_NAME(gl_query_counter)( vdynamic *q, int target ) {
-#	if !defined(HL_MESA) && !defined(HL_MOBILE)
+#	if !defined(HL_MESA) && !defined(HL_MOBILE) && !defined(HL_SBC)
 	glQueryCounter(q->v.i, target);
 #	endif
 }

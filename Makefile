@@ -114,7 +114,7 @@ else
 # Linux
 ifeq ($(ARCHITECTURE), ARM)
 	ifeq ($(ARM_SOC), RK3399_SOC)
-		CFLAGS += -mtune=cortex-a72.cortex-a53 -DRK3399_SOC
+		CFLAGS += -mtune=cortex-a72.cortex-a53 -D GLES32_SOC
 	endif
        	CFLAGS += -fPIC -pthread -fno-omit-frame-pointer
 else

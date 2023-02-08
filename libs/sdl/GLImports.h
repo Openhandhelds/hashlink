@@ -70,7 +70,7 @@ GL_IMPORT(glUniformBlockBinding, UNIFORMBLOCKBINDING);
 
 GL_IMPORT(glMultiDrawElementsIndirect, MULTIDRAWELEMENTSINDIRECT);
 
-#if !defined(HL_MESA)
+#if !defined(HL_MESA) && !defined(HL_SBC)
 GL_IMPORT(glGetQueryObjectui64v, GETQUERYOBJECTUI64V);
 GL_IMPORT(glQueryCounter, QUERYCOUNTER);
 #endif
@@ -85,6 +85,19 @@ GL_IMPORT(glCompressedTexImage3D, COMPRESSEDTEXIMAGE3D);
 GL_IMPORT(glTexSubImage3D, TEXSUBIMAGE3D);
 GL_IMPORT(glCompressedTexSubImage2D, COMPRESSEDTEXSUBIMAGE2D);
 GL_IMPORT(glCompressedTexSubImage3D, COMPRESSEDTEXSUBIMAGE3D);
+#elif defined(HL_SBC)
+#if 	defined(GLES20_SOC) || defined(GLES30_SOC) || defined(GLES31_SOC) || defined(GLES32_SOC)
+GL_IMPORT(glBlendEquation, BLENDEQUATION);
+GL_IMPORT(glActiveTexture, ACTIVETEXTURE);
+GL_IMPORT(glCompressedTexImage2D, COMPRESSEDTEXIMAGE2D);
+GL_IMPORT(glCompressedTexSubImage2D, COMPRESSEDTEXSUBIMAGE2D);
+#	endif
+#	if defined(GLES30_SOC) || defined(GLES31_SOC) || defined(GLES32_SOC)
+GL_IMPORT(glTexImage3D, TEXIMAGE3D);
+GL_IMPORT(glCompressedTexImage3D, COMPRESSEDTEXIMAGE3D);
+GL_IMPORT(glTexSubImage3D, TEXSUBIMAGE3D);
+GL_IMPORT(glCompressedTexSubImage3D, COMPRESSEDTEXSUBIMAGE3D);
+#	endif
 #endif
 
 #if defined(HL_NX)

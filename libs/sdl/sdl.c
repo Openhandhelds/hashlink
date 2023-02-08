@@ -110,9 +110,20 @@ HL_PRIM bool HL_NAME(init_once)() {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #else
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#	ifdef HL_SBC
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+#	ifdef GLES20_SOC
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#	else
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#       endif
+#	else
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#	endif
 #endif
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -353,31 +364,41 @@ HL_PRIM void HL_NAME(delay)( int time ) {
 
 HL_PRIM int HL_NAME(get_screen_width)() {
 	SDL_DisplayMode e;
-	SDL_GetCurrentDisplayMode(0, &e);
+	if( SDL_GetCurrentDisplayMode(0, &e) < 0 ) {
+		hl_error("SDL_GetCurrentDisplayMode failed: %s", hl_to_utf16(SDL_GetError()));
+	}
 	return e.w;
 }
 
 HL_PRIM int HL_NAME(get_screen_height)() {
 	SDL_DisplayMode e;
-	SDL_GetCurrentDisplayMode(0, &e);
+	if( SDL_GetCurrentDisplayMode(0, &e) < 0 ) {
+		hl_error("SDL_GetCurrentDisplayMode failed: %s", hl_to_utf16(SDL_GetError()));
+	}
 	return e.h;
 }
 
 HL_PRIM int HL_NAME(get_screen_width_of_window)(SDL_Window* win) {
 	SDL_DisplayMode e;
-	SDL_GetCurrentDisplayMode(win != NULL ? SDL_GetWindowDisplayIndex(win) : 0, &e);
+	if( SDL_GetCurrentDisplayMode(win != NULL ? SDL_GetWindowDisplayIndex(win) : 0, &e) < 0 ) {
+		hl_error("SDL_GetCurrentDisplayMode failed: %s", hl_to_utf16(SDL_GetError()));
+	}
 	return e.w;
 }
 
 HL_PRIM int HL_NAME(get_screen_height_of_window)(SDL_Window* win) {
 	SDL_DisplayMode e;
-	SDL_GetCurrentDisplayMode(win != NULL ? SDL_GetWindowDisplayIndex(win) : 0, &e);
+	if( SDL_GetCurrentDisplayMode(win != NULL ? SDL_GetWindowDisplayIndex(win) : 0, &e) < 0 ) {
+		hl_error("SDL_GetCurrentDisplayMode failed: %s", hl_to_utf16(SDL_GetError()));
+	}
 	return e.h;
 }
 
 HL_PRIM int HL_NAME(get_framerate)(SDL_Window* win) {
 	SDL_DisplayMode e;
-	SDL_GetCurrentDisplayMode(win != NULL ? SDL_GetWindowDisplayIndex(win) : 0, &e);
+	if( SDL_GetCurrentDisplayMode(win != NULL ? SDL_GetWindowDisplayIndex(win) : 0, &e) < 0 ) {
+		hl_error("SDL_GetCurrentDisplayMode failed: %s", hl_to_utf16(SDL_GetError()));
+	}
 	return e.refresh_rate;
 }
 
@@ -428,7 +449,7 @@ HL_PRIM void HL_NAME(set_window_grab)(SDL_Window* window, bool grabbed) {
 }
 
 HL_PRIM bool HL_NAME(get_window_grab)(SDL_Window* window) {
-	SDL_GetWindowGrab(window);
+	return SDL_GetWindowGrab(window);
 }
 
 HL_PRIM const char *HL_NAME(detect_keyboard_layout)() {
@@ -471,13 +492,17 @@ DEFINE_PRIM(_BOOL, hint_value, _BYTES _BYTES);
 
 HL_PRIM SDL_Window *HL_NAME(win_create_ex)(int x, int y, int width, int height, int sdlFlags) {
 	// force window to match device resolution on mobile
-#ifdef	HL_MOBILE
+#if	defined(HL_MOBILE) || defined(HL_SBC)
 	SDL_DisplayMode displayMode;
 	SDL_GetDesktopDisplayMode(0, &displayMode);
 	SDL_Window* win = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | sdlFlags);
 #else
 	SDL_Window* win = SDL_CreateWindow("", x, y, width, height, SDL_WINDOW_OPENGL | sdlFlags);
 #endif
+	if( !win ) {
+		hl_error("SDL_CreateWindow failed: %s", hl_to_utf16(SDL_GetError()));
+		return win;
+	}
 #	ifdef HL_WIN
 	// force window to show even if the debugger force process windows to be hidden
 	if( (SDL_GetWindowFlags(win) & SDL_WINDOW_INPUT_FOCUS) == 0 ) {
@@ -493,7 +518,11 @@ HL_PRIM SDL_Window *HL_NAME(win_create)(int width, int height) {
 }
 
 HL_PRIM SDL_GLContext HL_NAME(win_get_glcontext)(SDL_Window *win) {
-	return SDL_GL_CreateContext(win);
+	SDL_GLContext ctx = SDL_GL_CreateContext(win);
+	if( ctx == 0 ) {
+		hl_error("SDL_GL_CreateContext failed: %s", hl_to_utf16(SDL_GetError()));
+	}
+	return ctx;
 }
 
 HL_PRIM bool HL_NAME(win_set_fullscreen)(SDL_Window *win, int mode) {
@@ -560,7 +589,11 @@ HL_PRIM bool HL_NAME(win_set_display_mode)(SDL_Window *win, int width, int heigh
  }
 
 HL_PRIM int HL_NAME(win_display_handle)(SDL_Window *win) {
-	return SDL_GetWindowDisplayIndex(win);
+	int index = SDL_GetWindowDisplayIndex(win);
+	if( index < 0 ) {
+		hl_error("SDL_GetWindowDisplayIndex failed: %s", hl_to_utf16(SDL_GetError()));
+	}
+	return index;
 }
 
 HL_PRIM void HL_NAME(win_set_title)(SDL_Window *win, vbyte *title) {
@@ -601,7 +634,9 @@ HL_PRIM void HL_NAME(win_get_max_size)(SDL_Window *win, int *width, int *height)
 
 HL_PRIM double HL_NAME(win_get_opacity)(SDL_Window *win) {
 	float opacity = 1.0f;
-	SDL_GetWindowOpacity(win, &opacity);
+	if( SDL_GetWindowOpacity(win, &opacity) < 0 ) {
+		hl_error("SDL_GetWindowOpacity failed: %s", hl_to_utf16(SDL_GetError()));
+	}
 	return opacity;
 }
 
@@ -692,7 +727,7 @@ HL_PRIM void HL_NAME(gctrl_close)(SDL_GameController *controller) {
 	SDL_GameControllerClose(controller);
 }
 
-HL_PRIM int HL_NAME(gctrl_get_axis)(SDL_GameController *controller, int axisIdx ){
+HL_PRIM int HL_NAME(gctrl_get_axis)(SDL_GameController *controller, int axisIdx ) {
 	return SDL_GameControllerGetAxis(controller, axisIdx);
 }
 
@@ -741,22 +776,34 @@ DEFINE_PRIM(_I32, haptic_rumble_play, THAPTIC _F64 _I32);
 // joystick
 
 HL_PRIM int HL_NAME(joy_count)() {
-	return SDL_NumJoysticks();
+	int count = SDL_NumJoysticks();
+	if( count ) {
+		hl_error("SDL_NumJoysticks failed: %s", hl_to_utf16(SDL_GetError()));
+	}
+	return count;
 }
 
 HL_PRIM SDL_Joystick *HL_NAME(joy_open)(int idx) {
-	return SDL_JoystickOpen(idx);
+	SDL_Joystick *joystick = SDL_JoystickOpen(idx);
+	if( !joystick ) {
+		hl_error("SDL_JoystickOpen failed: %s", hl_to_utf16(SDL_GetError()));
+	}
+	return joystick;
 }
 
 HL_PRIM void HL_NAME(joy_close)(SDL_Joystick *joystick) {
 	SDL_JoystickClose(joystick);
 }
 
-HL_PRIM int HL_NAME(joy_get_axis)(SDL_Joystick *joystick, int axisIdx ){
-	return SDL_JoystickGetAxis(joystick, axisIdx);
+HL_PRIM int HL_NAME(joy_get_axis)(SDL_Joystick *joystick, int axisIdx ) {
+	int position = SDL_JoystickGetAxis(joystick, axisIdx);
+	if( position == 0) {
+		hl_error("SDL_JoystickGetAxis failed, axis %d: %s", axisIdx, hl_to_utf16(SDL_GetError()));
+	}
+	return position;
 }
 
-HL_PRIM int HL_NAME(joy_get_hat)(SDL_Joystick *joystick, int hatIdx ){
+HL_PRIM int HL_NAME(joy_get_hat)(SDL_Joystick *joystick, int hatIdx ) {
 	return SDL_JoystickGetHat(joystick, hatIdx);
 }
 
@@ -765,7 +812,11 @@ HL_PRIM bool HL_NAME(joy_get_button)(SDL_Joystick *joystick, int btnIdx) {
 }
 
 HL_PRIM int HL_NAME(joy_get_id)(SDL_Joystick *joystick) {
-	return SDL_JoystickInstanceID(joystick);
+	int instance = SDL_JoystickInstanceID(joystick);
+	if( instance < 0 ) {
+		hl_error("SDL_JoystickInstanceID failed: %s", hl_to_utf16(SDL_GetError()));
+	}
+	return instance;
 }
 
 HL_PRIM vbyte *HL_NAME(joy_get_name)(SDL_Joystick *joystick) {
@@ -786,7 +837,11 @@ DEFINE_PRIM(_BYTES, joy_get_name, TJOY);
 
 
 HL_PRIM SDL_Surface *HL_NAME(surface_from)( vbyte *ptr, int width, int height, int depth, int pitch, int rmask, int gmask, int bmask, int amask ) {
-	return SDL_CreateRGBSurfaceFrom(ptr,width,height,depth,pitch,rmask,gmask,bmask,amask);
+	SDL_Surface *surf = SDL_CreateRGBSurfaceFrom(ptr, width, height, depth, pitch, rmask, gmask, bmask, amask);
+	if( !surf ) {
+		hl_error("SDL_CreateRGBSurfaceFrom failed: %s", hl_to_utf16(SDL_GetError()));
+	}
+	return surf;
 }
 
 HL_PRIM void HL_NAME(free_surface)( SDL_Surface *s ) {
@@ -808,11 +863,19 @@ HL_PRIM bool HL_NAME(is_cursor_visible)() {
 }
 
 HL_PRIM SDL_Cursor *HL_NAME(cursor_create)( SDL_Surface *s, int hotX, int hotY ) {
-	return SDL_CreateColorCursor(s,hotX,hotY);
+	SDL_Cursor *cursor = SDL_CreateColorCursor(s, hotX, hotY);
+	if( !cursor ) {
+		hl_error("SDL_CreateColorCursor failed: %s", hl_to_utf16(SDL_GetError()));
+	}
+	return cursor;
 }
 
 HL_PRIM SDL_Cursor *HL_NAME(cursor_create_system)( int kind ) {
-	return SDL_CreateSystemCursor(kind);
+	SDL_Cursor *cursor = SDL_CreateSystemCursor(kind);
+	if( !cursor ) {
+		hl_error("SDL_CreateSystemCursor failed, kind %d: %s", kind, hl_to_utf16(SDL_GetError()));
+	}
+	return cursor;
 }
 
 HL_PRIM void HL_NAME(free_cursor)( SDL_Cursor *c ) {
@@ -838,8 +901,10 @@ HL_PRIM char* HL_NAME(get_clipboard_text)() {
 
 HL_PRIM varray* HL_NAME(get_displays)() {
 	int n = SDL_GetNumVideoDisplays();
-	if (n < 0)
+	if (n < 0) {
+		hl_error("SDL_GetNumVideoDisplays failed: %s", hl_to_utf16(SDL_GetError()));
 		return NULL;
+	}
 	varray* arr = hl_alloc_array(&hlt_dynobj, n);
 	for (int i = 0; i < n; i++) {
 		vdynamic *obj = (vdynamic*) hl_alloc_dynobj();
@@ -859,8 +924,10 @@ HL_PRIM varray* HL_NAME(get_displays)() {
 
 HL_PRIM varray* HL_NAME(get_display_modes)(int display_id) {
 	int n = SDL_GetNumDisplayModes(display_id);
-	if (n < 0)
+	if (n < 0) {
+		hl_error("SDL_GetNumDisplayModes failed, display %d: %s", display_id, hl_to_utf16(SDL_GetError()));
 		return NULL;
+	}
 	varray* arr = hl_alloc_array(&hlt_dynobj, n);
 	for (int i = 0; i < n; i++) {
 		SDL_DisplayMode mode;
@@ -882,6 +949,7 @@ HL_PRIM vdynobj* HL_NAME(get_current_display_mode)(int display_id, bool registry
 	else
 		r = SDL_GetCurrentDisplayMode(display_id, &mode);
 	if (r < 0) {
+		hl_error("SDL_GetCurrentDisplayMode failed, display %d: %s", display_id, hl_to_utf16(SDL_GetError()));
 		printf("can't find mode for %d : %d\n", display_id, r);
 		return NULL;
 	}
